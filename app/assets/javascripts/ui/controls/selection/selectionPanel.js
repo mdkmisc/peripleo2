@@ -31,11 +31,22 @@ define([
 
         referencesEl = element.find('.references'),
 
+        iiifPane = L.map(depictionEl[0], {
+          center: [0, 0],
+          crs: L.CRS.Simple,
+          zoom: 0,
+          maxZoom: 10,
+          zoomControl: false
+        }),
+
+        iiifImage = false,
+
         empty = function() {
           depictionEl.css('background-image', false);
           homepageEl.empty();
           temporalBoundsEl.empty();
           inDatasetEl.empty();
+          if (iiifImage) iiifPane.removeLayer(iiifImage);
         },
 
         show = function(item) {
@@ -49,10 +60,16 @@ define([
 
               setDepiction = function() {
                 if (item.depictions && item.depictions.length > 0) {
-                  var firstURL = item.depictions[0].url;
+                  var firstURL = item.depictions[0].url + '/info.json';
+
+                  firstURL = firstURL.replace('uni-graz.at/', 'uni-graz.at/iiif/');
 
                   // TODO pre-load image & report in case of 404
-                  depictionEl.css('background-image', 'url(' + firstURL + ')');
+                  // depictionEl.css('background-image', 'url(' + firstURL + ')');
+                  iiifImage = L.tileLayer.iiif(firstURL, { attribution: false, fitBounds: true });
+                  iiifImage.addTo(iiifPane);
+
+                  console.log(iiifPane.getZoom());
                 }
               },
 
@@ -112,12 +129,19 @@ define([
               };
 
           empty();
-          setDepiction();
           setInfo();
           setReferences();
 
           if (slideAction)
-            element.velocity(slideAction, { duration: SLIDE_DURATION });
+            element.velocity(slideAction, {
+              duration: SLIDE_DURATION,
+              complete: function() {
+                iiifPane.invalidateSize();
+                setDepiction();
+              }
+            });
+          else
+            setDepiction();
         };
 
     this.show = show;
